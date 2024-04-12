@@ -1,57 +1,62 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.0)  # Updated to a more modern version
 
-project(hermes)
+project(libhermes)
 
-set(CMAKE_VERBOSE_MAKEFILE, 1)
+# Ensure libessentials is found. Ensure this package exports its targets correctly.
+find_package(libessentials REQUIRED)
 
-if(POLICY CMP0054)
-  cmake_policy(SET CMP0054 NEW)
-endif()
+set(CMAKE_VERBOSE_MAKEFILE ON)
 
-file(GLOB hermes_SRC "./include/hermes/*.hpp" "./source/*.cpp")
+# Set global C++ standard rather than rely on if conditions on CXX_FLAGS directly.
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+file(GLOB_RECURSE hermes_SRC "source/*.cpp")
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
+include(GNUInstallDirs)
+
+# Assuming these modules set necessary compiler flags.
 include(./../CMakeHelpers/addSpecificFlags.cmake)
 include(./../CMakeHelpers/addSeadexOptions.cmake)
 
-include_directories("./include")
-include_directories("./../externals/essentials/source/essentials/include")
+add_library(${PROJECT_NAME} ${hermes_SRC})
+target_link_libraries(${PROJECT_NAME} PUBLIC libessentials::libessentials)
+target_include_directories(${PROJECT_NAME} PUBLIC
+		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+		$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${extra_flags}")
+# Gather public header files and install them.
+file(GLOB hermes_hpp "include/hermes/*.hpp")
+install(FILES ${hermes_hpp} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/hermes)
 
-set(link_libraries_list "")
+install(TARGETS ${PROJECT_NAME}
+		EXPORT ${PROJECT_NAME}-targets
+		ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+		LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+		RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-if("${CPP_VERSION}" STREQUAL "03")	
-	use_boost_libraries(link_libraries_list)
-endif()
+install(EXPORT ${PROJECT_NAME}-targets
+		FILE ${PROJECT_NAME}Targets.cmake
+		NAMESPACE ${PROJECT_NAME}::
+		DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME})
 
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-	add_library_for_linking(link_libraries_list libessentials)
-elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-	add_library_for_linking(link_libraries_list essentials)
-endif()
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(
+		${PROJECT_NAME}ConfigVersion.cmake
+		VERSION 1.0
+		COMPATIBILITY AnyNewerVersion)
 
-message(STATUS "hermes linking to libraries: ${link_libraries_list}" )
+configure_package_config_file(Config.cmake.in
+		${PROJECT_NAME}Config.cmake
+		INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME})
 
+install(FILES
+		"${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
+		"${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
+		DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME})
 
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-	add_library(libhermes ${LINK_TYPE} ${hermes_SRC})
-	target_link_libraries(libhermes LINK_PUBLIC ${link_libraries_list})
-elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-	add_library(hermes STATIC ${hermes_SRC})
-	target_link_libraries(hermes LINK_PUBLIC ${link_libraries_list})
-endif()
-
-file(GLOB hermes_hpp "./include/*.hpp")
-install(FILES ${hermes_hpp} DESTINATION include/hermes/include)
-
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-	install(TARGETS libhermes DESTINATION lib)
-	set_target_properties(libhermes PROPERTIES PREFIX "")
-elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-	install(TARGETS hermes DESTINATION lib)
-	set_target_properties(hermes PROPERTIES PREFIX "")
-endif()
+set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "")

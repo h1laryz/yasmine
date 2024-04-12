@@ -5,12 +5,6 @@ if(POLICY CMP0054)
 endif()
 
 
-function(use_pthread varName)
-	if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-		set(${varName} ${${varName}} pthread PARENT_SCOPE)
-	endif()
-endfunction()
-
 
 function(use_boost_libraries varName)
 	set(${varName} ${${varName}} ${Boost_LIBRARIES} PARENT_SCOPE)

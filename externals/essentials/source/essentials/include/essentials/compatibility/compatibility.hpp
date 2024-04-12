@@ -111,6 +111,7 @@ namespace sxe
 
 	#else
 
+    #include <memory>
 		using std::make_unique;
 
 	#endif

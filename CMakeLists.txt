@@ -16,7 +16,6 @@ include(./CMakeHelpers/addBoost.cmake)
 
 include(./CMakeHelpers/functions.cmake)
 include(./CMakeHelpers/functionsRapidJSON.cmake)
-include(./CMakeHelpers/functionsAddCompilerFlags.cmake)
 
 add_subdirectory(externals)
 
